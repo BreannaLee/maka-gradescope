@@ -1,26 +1,33 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@libsql/client/web'
 
 export async function GET() {
   try {
-    const url = process.env.TURSO_DATABASE_URL || 'NOT SET'
-    const hasToken = !!process.env.TURSO_AUTH_TOKEN
+    let url = process.env.TURSO_DATABASE_URL || 'NOT SET'
+    const authToken = process.env.TURSO_AUTH_TOKEN || ''
 
-    // Try a simple query
-    const userCount = await prisma.user.count()
+    // Convert libsql:// to https:// for web client
+    if (url.startsWith('libsql://')) {
+      url = url.replace('libsql://', 'https://')
+    }
+
+    // Test raw libsql connection first (bypass Prisma)
+    const client = createClient({ url, authToken })
+    const result = await client.execute('SELECT COUNT(*) as count FROM User')
+    const count = result.rows[0]?.count
 
     return NextResponse.json({
       status: 'ok',
-      dbUrl: url.slice(0, 30) + '...',
-      hasToken,
-      userCount,
+      dbUrl: url.slice(0, 40) + '...',
+      hasToken: authToken.length > 0,
+      tokenLength: authToken.length,
+      userCount: count,
     })
   } catch (err) {
     return NextResponse.json({
       status: 'error',
       error: String(err),
-      dbUrl: (process.env.TURSO_DATABASE_URL || 'NOT SET').slice(0, 30) + '...',
-      hasToken: !!process.env.TURSO_AUTH_TOKEN,
+      stack: err instanceof Error ? err.stack?.split('\n').slice(0, 3) : undefined,
     }, { status: 500 })
   }
 }
