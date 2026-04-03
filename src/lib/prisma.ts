@@ -6,10 +6,14 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function createPrismaClient() {
-  let url = process.env.TURSO_DATABASE_URL!
-  const authToken = process.env.TURSO_AUTH_TOKEN
+  let url = (process.env.TURSO_DATABASE_URL || '').trim()
+  const authToken = (process.env.TURSO_AUTH_TOKEN || '').trim()
 
-  // Vercel serverless uses the web bundle which requires https:// not libsql://
+  if (!url) {
+    throw new Error('TURSO_DATABASE_URL is not set')
+  }
+
+  // Vercel serverless may use web bundle which requires https://
   if (url.startsWith('libsql://')) {
     url = url.replace('libsql://', 'https://')
   }
