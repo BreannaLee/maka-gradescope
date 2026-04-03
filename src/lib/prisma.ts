@@ -6,14 +6,13 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function createPrismaClient() {
-  const url = process.env.TURSO_DATABASE_URL
+  const url = process.env.TURSO_DATABASE_URL!
   const authToken = process.env.TURSO_AUTH_TOKEN
 
-  if (!url) {
-    throw new Error('TURSO_DATABASE_URL is not set')
-  }
+  // Use HTTPS for remote Turso, libsql for local
+  const resolvedUrl = url.startsWith('libsql://') ? url.replace('libsql://', 'https://') : url
 
-  const adapter = new PrismaLibSql({ url, authToken })
+  const adapter = new PrismaLibSql({ url: resolvedUrl, authToken })
   return new PrismaClient({ adapter })
 }
 
